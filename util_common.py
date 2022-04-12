@@ -8,6 +8,7 @@ def openAnyMatlabFile(matlabFilename: str) -> Union[dict, h5py.File]:
     try:
         outputDict = h5py.File(matlabFilename, 'r')
     except:
+        print('using loadmat')
         outputDict = loadmat(matlabFilename)
     return outputDict
 
