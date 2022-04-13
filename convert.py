@@ -8,7 +8,7 @@ OUT_FOLDER = './out/'
 
 def main():
     # filename = 'Loc_1_well_4_CellObjData.mat'
-    filename = 'test.mat'
+    filename = 'struct_5.mat'
     matlab_data = util.openAnyMatlabFile(IN_FOLDER + filename)
     cell_data_list = util.getNormalizedMatlabObjectFromKey(matlab_data, 'Cells_Struct')[0]
    
@@ -27,6 +27,8 @@ def main():
         if len(parent_id) > 0:
             parent_id = parent_id[0][0]
         else:
+            if cell['Origin'][0][0] != 'f':
+                continue
             parent_id = -1
         edges.append([cell_id, parent_id])
 
@@ -48,6 +50,8 @@ def main():
     df.to_csv(OUT_FOLDER + 'data.csv', index=False, header=True)
 
     df = pd.DataFrame(edges, columns=['id','parent']).astype(int)
+    df['parent'] = df['parent'].replace(-1, '')
+    print(df)
     df.to_csv(OUT_FOLDER + 'edges.csv', index=False, header=True)
 
 
