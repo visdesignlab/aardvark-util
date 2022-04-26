@@ -8,11 +8,11 @@ OUT_FOLDER = './out/'
 
 def main():
     # filename = 'Loc_1_well_4_CellObjData.mat'
-    filename = 'struct_5.mat'
+    filename = 'struct_2.mat'
     matlab_data = util.openAnyMatlabFile(IN_FOLDER + filename)
     cell_data_list = util.getNormalizedMatlabObjectFromKey(matlab_data, 'Cells_Struct')[0]
    
-    attribute_keys = ['mass', 'MI', 'A']
+    attribute_keys = ['ii_stored', 'mass', 'MI', 'A']
     time_key = 'time'
     keys = [time_key]
     keys.extend(attribute_keys)
@@ -47,6 +47,8 @@ def main():
     column_names.extend(keys)
     df = pd.DataFrame(data_out, columns=column_names)
     df['id'] = df['id'].astype(int)
+    df.rename(columns={'ii_stored': 'frame'}, inplace=True)
+    df['frame'] = df['frame'].astype(int) - 1
     df.to_csv(OUT_FOLDER + 'data.csv', index=False, header=True)
 
     df = pd.DataFrame(edges, columns=['id','parent']).astype(int)
