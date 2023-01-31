@@ -8,33 +8,36 @@ OUT_FOLDER = './out/'
 
 def main():
     # filename = 'Loc_1_well_4_CellObjData.mat'
-    filename = 'struct_2.mat'
+    filename = 'Loc_4_well_23_cell_obj_struct_newer.mat'
     matlab_data = util.openAnyMatlabFile(IN_FOLDER + filename)
     cell_data_list = util.getNormalizedMatlabObjectFromKey(matlab_data, 'Cells_Struct')[0]
    
-    attribute_keys = ['ii_stored', 'mass', 'MI', 'A']
+    attribute_keys = ['mass', 'MI', 'A',] # ii_stored
+    attribute_keys = ['mass', 'MI', 'A',] # ii_stored
     time_key = 'time'
     keys = [time_key]
     keys.extend(attribute_keys)
 
-    id = 'CellNum'
+    id = 'CellID' #'CellNum'
     parent = 'ParentCell'
     data_arrays = []
     edges = []
+    noParent = -404
     for cell in cell_data_list:
         cell_id = cell[id][0][0]
         parent_id = cell[parent]
         if len(parent_id) > 0:
             parent_id = parent_id[0][0]
+            if cell['FounderMark'][0][0] == 1:
+                parent_id = noParent
         else:
-            if cell['Origin'][0][0] != 'f':
-                continue
-            parent_id = -1
+            parent_id = noParent
         edges.append([cell_id, parent_id])
 
         data_length = len(cell[time_key])
         id_col = np.full((data_length, 1), cell[id], dtype='uint')
-        values = [id_col]
+        parent_col = np.full((data_length, 1), cell[parent], dtype='uint')
+        values = [id_col, parent_col]
         for key in keys:
             values.append(cell[key])
         combined = np.array(values).T[0]
@@ -43,16 +46,17 @@ def main():
 
 
     data_out = np.concatenate(data_arrays, axis=0)
-    column_names = ['id']
+    column_names = ['id', 'parent']
     column_names.extend(keys)
     df = pd.DataFrame(data_out, columns=column_names)
     df['id'] = df['id'].astype(int)
-    df.rename(columns={'ii_stored': 'frame'}, inplace=True)
-    df['frame'] = df['frame'].astype(int) - 1
+    df['parent'] = df['parent'].astype(int)
+    # df.rename(columns={'ii_stored': 'frame'}, inplace=True)
+    # df['frame'] = df['frame'].astype(int) - 1
     df.to_csv(OUT_FOLDER + 'data.csv', index=False, header=True)
 
     df = pd.DataFrame(edges, columns=['id','parent']).astype(int)
-    df['parent'] = df['parent'].replace(-1, '')
+    df['parent'] = df['parent'].replace(noParent, '')
     print(df)
     df.to_csv(OUT_FOLDER + 'edges.csv', index=False, header=True)
 
