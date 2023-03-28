@@ -2,6 +2,12 @@ for index = 1:length(Cells)
     Cells_Struct(index) = struct(Cells(index))
 end
 
+for index = 1:length(Cells_Struct)
+    Cells_Struct(index).ii_stored  = Cells_Struct(index).ii_stored.'
+    Cells_Struct(index).segID  = Cells_Struct(index).segID.'
+end
+
+
 % for index = 1:length(Well2_Cells)
 %     Well2_Cells_Struct(index) = struct(Well2_Cells(index))
 % end
