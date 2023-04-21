@@ -1,7 +1,5 @@
-from math import nan
-from ntpath import realpath
-import numpy as np
-import util_common as util
+import os
+import glob
 import polars as pl
 
 
@@ -37,9 +35,8 @@ def updateParentLookup(lookup, df):
         lookup[id] = realParent
     return
 
-def main():
-    filename = 'R3_D10_16_cell104.csv'
-    df = pl.read_csv(IN_FOLDER + filename, dtypes={'mCherry - Minimum Intensity ()': pl.Float64}, null_values=['-∞', '∞'])
+def main(filename):
+    df = pl.read_csv(IN_FOLDER + filename, comment_char='#', dtypes={'mCherry - Minimum Intensity ()': pl.Float64}, null_values=['-∞', '∞'])
     # print(df)
     parentLookupDF = df.select(pl.col('Tracking ID'), (pl.col('Lineage ID')).alias('Parent ID')).unique()
     # print(parentLookupDF)
@@ -55,9 +52,13 @@ def main():
     parentLookupDF = pl.DataFrame({'Tracking ID': parentLookup.keys(), 'Parent ID': parentLookup.values()})
     df = df.join(parentLookupDF, on='Tracking ID')
     # print(df)
-    print(df.filter(pl.col('Lineage ID') == 104))
     df.write_csv(OUT_FOLDER + filename)
     return
 
 if __name__ == '__main__':
-    main()
+    os.chdir(IN_FOLDER)
+    csvFiles = glob.glob('*.csv');
+    os.chdir('..')
+    for filename in csvFiles:
+        print('processing ' + filename)
+        main(filename)
