@@ -8,9 +8,10 @@ OUT_FOLDER = './out/'
 
 
 def main():
-    # filename = 'Loc_1_well_4_CellObjData.mat'
-    # filename = 'Loc_4_well_23_cell_obj_struct_newer.mat'
-    filename = 'jz_march.mat'
+    matlab_to_csv('jz_march.mat')
+    return
+
+def matlab_to_csv(filename: str):
     matlab_data = util.openAnyMatlabFile(IN_FOLDER + filename)
     cell_data_list = util.getNormalizedMatlabObjectFromKey(matlab_data, 'Cells_Struct')[0]
    
@@ -61,9 +62,7 @@ def main():
     # df['parent'] = df['parent'].replace(noParent, '')
     # print(df)
     # df.to_csv(OUT_FOLDER + 'edges.csv', index=False, header=True)
-
-
-    return
+    return 
 
 if __name__ == '__main__':
     main()
