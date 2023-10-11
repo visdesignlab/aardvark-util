@@ -2,6 +2,7 @@ for index = 1:length(Cells)
     Cells_Struct(index) = struct(Cells(index))
 end
 
+% transpose ii_stored and segID because they are flipped for some resoun in source data
 for index = 1:length(Cells_Struct)
     Cells_Struct(index).ii_stored  = Cells_Struct(index).ii_stored.'
     Cells_Struct(index).segID  = Cells_Struct(index).segID.'

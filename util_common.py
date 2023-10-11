@@ -10,7 +10,6 @@ def openAnyMatlabFile(matlabFilename: str) -> Union[dict, h5py.File]:
     try:
         outputDict = h5py.File(matlabFilename, 'r')
     except:
-        print('using loadmat')
         outputDict = loadmat(matlabFilename)
     return outputDict
 
@@ -51,6 +50,10 @@ def msg(msg: str, quietMode: bool, sameLine: bool = False) -> None:
         print('\t' + msg, end=endString)
     return
 
+def return_carriage(quietMode: bool) -> None:
+    # call after sameLine=True if you want it to be preserved (e.g. last frame of loading bar)
+    msg_header('', quietMode)
+
 LOADING_BAR_CONSTANT = 0.002345 # somewhat arbitrary constant so printing messages aren't overdone. But seem irregular.
 
 def loadingBar(top: int, bot: int, width = 20) -> str:
@@ -67,6 +70,13 @@ def loadingBar(top: int, bot: int, width = 20) -> str:
         progressBar += '─' * (width - (doneCount + 1))
     return progressBar + ' {:.2f}%, {} of {}'.format(percent * 100, top, bot)
 
+def updateLoadingMessage(top: int, bot: int, item: str, quietMode: bool): 
+    step = max(1, round(bot * LOADING_BAR_CONSTANT))
+    if top % step == 0 or top == bot:
+        loadingBarStr = loadingBar(top, bot)
+        msg('{} {}.'.format(loadingBarStr, item), quietMode, True)
+    return
+
 
 def export_file(feature_list: List, full_path: str, frame: int):
     if len(feature_list) == 0:
@@ -74,9 +84,15 @@ def export_file(feature_list: List, full_path: str, frame: int):
     feature_collection = FeatureCollection(feature_list)
     json_string = dumps(feature_collection)
     save_path = os.path.join(full_path, str(frame) + '.json')
-    if not os.path.exists(full_path):
-        os.mkdir(full_path)
+    ensure_directory_exists(full_path)
     with open(save_path, 'w') as out_file:
-        print('saving: ', save_path)
         out_file.write(json_string)
-    return   
+    return
+
+
+def ensure_directory_exists(path: str):
+    # Creates directory in path if it doesn't exist
+    # path can include filename
+    dir_path = os.path.dirname(path)
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
