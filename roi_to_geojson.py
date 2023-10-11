@@ -1,8 +1,8 @@
 import os
 import fnmatch
-from typing import List
+import util_common as util
 from roifile import ImagejRoi
-from geojson import Feature, Polygon, FeatureCollection, dumps
+from geojson import Feature, Polygon
 
 IN_FOLDER = './in/'
 OUT_FOLDER = './out/'
@@ -24,7 +24,7 @@ def main():
     for path, name in filename_list:
         frame = parse_frame(name)
         if last_frame != frame:
-            export_file(feature_list, last_path, last_frame)
+            util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path), last_frame)
             feature_list = []
         last_frame = frame
         last_path = path
@@ -36,22 +36,8 @@ def main():
         feature = Feature(geometry=Polygon([outer_polygon_coords]), properties={"ID": cell_id}, bbox=[roi.left, roi.bottom, roi.right, roi.top])
         feature_list.append(feature)
 
-    export_file(feature_list, last_path, last_frame)
+    util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path), last_frame)
     return
-
-def export_file(feature_list: List, path: str, frame: int):
-    if len(feature_list) == 0:
-        return
-    feature_collection = FeatureCollection(feature_list)
-    json_string = dumps(feature_collection)
-    full_path = os.path.join(OUT_FOLDER, path)
-    save_path = os.path.join(full_path, str(frame) + '.json')
-    if not os.path.exists(full_path):
-        os.mkdir(full_path)
-    with open(save_path, 'w') as out_file:
-        print('saving: ', save_path)
-        out_file.write(json_string)
-    return    
 
 def parse_frame(filename: str) -> int:
     return int(filename.split('-')[0])

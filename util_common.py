@@ -1,8 +1,10 @@
 import math
-from typing import Union
+import os
+from typing import Union, List
 import h5py
 from scipy.io import loadmat
 import numpy as np
+from geojson import FeatureCollection, dumps
 
 def openAnyMatlabFile(matlabFilename: str) -> Union[dict, h5py.File]:
     try:
@@ -64,3 +66,17 @@ def loadingBar(top: int, bot: int, width = 20) -> str:
         progressBar += singleChar
         progressBar += '─' * (width - (doneCount + 1))
     return progressBar + ' {:.2f}%, {} of {}'.format(percent * 100, top, bot)
+
+
+def export_file(feature_list: List, full_path: str, frame: int):
+    if len(feature_list) == 0:
+        return
+    feature_collection = FeatureCollection(feature_list)
+    json_string = dumps(feature_collection)
+    save_path = os.path.join(full_path, str(frame) + '.json')
+    if not os.path.exists(full_path):
+        os.mkdir(full_path)
+    with open(save_path, 'w') as out_file:
+        print('saving: ', save_path)
+        out_file.write(json_string)
+    return   
