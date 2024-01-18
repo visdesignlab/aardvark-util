@@ -41,8 +41,8 @@ At the top level it expects the following attributes:
 | Attribute              | Definition                                                                                                                                                                                                                     |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `headers`              | The list of column names in the CSV feature tables. The order should match the CSV files.                                                                                                                                      |
-| `headerTransforms`     | Defines the name of certain special columns (`time`, `frame`, `id`, `parent`, `mass`, `x`, `y`). This is optional if the name already exactly matches in headers. See table below for information about these special columns. |
-| `locationMetadataList` | A list of imaging location metadata. Each imaging location will include an `id`, `tabularDataFilename`, `imageDataFilename`, and `segmentationsFolder`. See the table below for more information on each of these.             |
+| `headerTransforms`     | Defines the name of certain special columns (`time`, `frame`, `id`, `parent`, `mass`, `x`, `y`). This is optional if the name already exactly matches in headers. See [the table below](https://github.com/visdesignlab/aardvark-util?tab=readme-ov-file#headertransforms) for information about these special columns. |
+| `locationMetadataList` | A list of imaging location metadata. Each imaging location will include an `id`, `tabularDataFilename`, `imageDataFilename`, and `segmentationsFolder`. See [the table below](https://github.com/visdesignlab/aardvark-util?tab=readme-ov-file#locationmetadatalist) for more information on each of these.             |
 
 ### `headerTransforms`
 
@@ -61,7 +61,7 @@ At the top level it expects the following attributes:
 `id` | A unique name for this location. Can be anything, but will be displayed in the interface, so a more descriptive name is better.
 `tabularDataFilename` | The location of the CSV file feature table for this experiment.
 `imageDataFilename` | The location of the OME TIFF image file. This should be a `*.companion.ome` file.
-`segmentationsFolder` | This folder contains all of the segmentation files for a given location. See section on segmentations for more details.
+`segmentationsFolder` | This folder contains all of the segmentation files for a given location. See the [section on segmentations](https://github.com/visdesignlab/aardvark-util?tab=readme-ov-file#segmentations-folder) for more details.
 
 So, altogether a single experiment metadata file should look something like the following:
 
