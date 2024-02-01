@@ -84,7 +84,7 @@ def export_file(feature_list: List, full_path: str, frame: int):
     feature_collection = FeatureCollection(feature_list)
     json_string = dumps(feature_collection)
     save_path = os.path.join(full_path, str(frame) + '.json')
-    ensure_directory_exists(full_path)
+    ensure_directory_exists(save_path)
     with open(save_path, 'w') as out_file:
         out_file.write(json_string)
     return
