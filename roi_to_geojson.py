@@ -19,15 +19,21 @@ QUIET_MODE = False
 # - maybe tracks folder, but probably not
 
 def main():
-
+    util.msg_header('Finding ROI files', QUIET_MODE)
     pattern = '*.roi'
     filename_list = []
+    found_count = 0
+    print_every = 10
     for root, _, files in os.walk(IN_FOLDER):
         path = root.replace(IN_FOLDER, '', 1)
         for name in fnmatch.filter(files, pattern):
             filename_list.append((path, name))
+            found_count += 1
+            if found_count % print_every == 0:
+                util.msg('{} Found: {} files.'.format(util.textSpinner(found_count, 10_000), found_count), QUIET_MODE, True)
+    util.msg('✅ Found: {} files'.format(found_count), QUIET_MODE, True)
     filename_list.sort(key=lambda f: (f[0], parse_frame(f[1]), parse_id(f[1])))
-
+    util.return_carriage(QUIET_MODE)
     feature_list = []
     last_frame = -1
     last_path = ''

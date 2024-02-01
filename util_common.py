@@ -77,6 +77,13 @@ def updateLoadingMessage(top: int, bot: int, item: str, quietMode: bool):
         msg('{} {}.'.format(loadingBarStr, item), quietMode, True)
     return
 
+def textSpinner(step: int, update: int) -> str:
+    # next animation frame after every 'update' steps
+    # animation_frames = ['|', '/', '—', '\\']
+    animation_frames = [ '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
+    # animation_frames = ['🕛', '🕧', '🕐', '🕜', '🕑', '🕝', '🕒', '🕞', '🕓', '🕟', '🕔', '🕠', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦']
+    return animation_frames[math.floor(step/update) % len(animation_frames)]
+
 
 def export_file(feature_list: List, full_path: str, frame: int):
     if len(feature_list) == 0:
