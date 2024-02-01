@@ -12,9 +12,11 @@ QUIET_MODE = False
 
 
 # TODO:
+# - cells folder
 # - better progress output (split percent by folders)
 # - command line args (in, out, quiet, force overwrite)
 # - avoid overwrite by default
+# - maybe tracks folder, but probably not
 
 def main():
 
@@ -39,7 +41,7 @@ def main():
         frame = parse_frame(name)
         if last_frame != frame:
             # print(path, 'frame:', frame)
-            util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path), last_frame)
+            util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), last_frame)
             feature_list = []
         last_frame = frame
         last_path = path
@@ -48,10 +50,10 @@ def main():
         roi = ImagejRoi.fromfile(filename)
         outer_polygon_coords = roi.coordinates().tolist()
         outer_polygon_coords.append(outer_polygon_coords[0]) # add beginning to end to close loop
-        feature = Feature(geometry=Polygon([outer_polygon_coords]), properties={"ID": cell_id}, bbox=[roi.left, roi.bottom, roi.right, roi.top])
+        feature = Feature(geometry=Polygon([outer_polygon_coords]), properties={"id": cell_id, 'frame': frame}, bbox=[roi.left, roi.bottom, roi.right, roi.top])
         feature_list.append(feature)
 
-    util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path), last_frame)
+    util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), last_frame)
     util.return_carriage(QUIET_MODE)
     util.msg_header('Done 🥂', QUIET_MODE)
     return
