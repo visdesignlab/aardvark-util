@@ -1,5 +1,6 @@
 import os
 import fnmatch
+from matlab_to_all import QUIET_MODE
 import util_common as util
 from roifile import ImagejRoi
 from geojson import Feature, Polygon
@@ -7,6 +8,13 @@ from geojson import Feature, Polygon
 IN_FOLDER = './in/'
 OUT_FOLDER = './out/'
 
+QUIET_MODE = False
+
+
+# TODO:
+# - better progress output (split percent by folders)
+# - command line args (in, out, quiet, force overwrite)
+# - avoid overwrite by default
 
 def main():
 
@@ -21,9 +29,16 @@ def main():
     feature_list = []
     last_frame = -1
     last_path = ''
-    for path, name in filename_list:
+    # last_folder = ''
+    util.msg_header('Converting ROI to GeoJSON', QUIET_MODE)
+    for index, (path, name) in enumerate(filename_list):
+        util.updateLoadingMessage(index + 1, len(filename_list), '[{}]'.format(path), False)
+        # if last_folder != path:
+        #     print()
+        #     last_folder = path
         frame = parse_frame(name)
         if last_frame != frame:
+            # print(path, 'frame:', frame)
             util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path), last_frame)
             feature_list = []
         last_frame = frame
@@ -37,13 +52,15 @@ def main():
         feature_list.append(feature)
 
     util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path), last_frame)
+    util.return_carriage(QUIET_MODE)
+    util.msg_header('Done 🥂', QUIET_MODE)
     return
 
 def parse_frame(filename: str) -> int:
     return int(filename.split('-')[0])
 
 def parse_id(filename: str) -> int:
-    return int(filename.split('-')[1].split('.')[0])
+    return filename.split('-')[1].split('.')[0]
 
 if __name__ == '__main__':
     main()
