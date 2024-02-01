@@ -3,7 +3,8 @@ import fnmatch
 from matlab_to_all import QUIET_MODE
 import util_common as util
 from roifile import ImagejRoi
-from geojson import Feature, Polygon
+from geojson import Feature, Polygon, FeatureCollection, dumps
+from typing import Union, List
 
 IN_FOLDER = './in/'
 OUT_FOLDER = './out/'
@@ -11,11 +12,12 @@ OUT_FOLDER = './out/'
 QUIET_MODE = False
 
 
-# TODO:
 # - cells folder
-# - better progress output (split percent by folders)
-# - command line args (in, out, quiet, force overwrite)
+# 👆  🍻🍻🍻 DONE 🍻🍻🍻  👆
 # - avoid overwrite by default
+# - better progress output (split percent by folders)
+# 🧊 ICEBOX 🧊
+# - command line args (in, out, quiet, force overwrite)
 # - maybe tracks folder, but probably not
 
 def main():
@@ -37,17 +39,12 @@ def main():
     feature_list = []
     last_frame = -1
     last_path = ''
-    # last_folder = ''
     util.msg_header('Converting ROI to GeoJSON', QUIET_MODE)
     for index, (path, name) in enumerate(filename_list):
         util.updateLoadingMessage(index + 1, len(filename_list), '[{}]'.format(path), False)
-        # if last_folder != path:
-        #     print()
-        #     last_folder = path
         frame = parse_frame(name)
-        if last_frame != frame:
-            # print(path, 'frame:', frame)
-            util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), last_frame)
+        if last_frame != frame and last_frame != -1:
+            export(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), str(last_frame))
             feature_list = []
         last_frame = frame
         last_path = path
@@ -57,12 +54,30 @@ def main():
         outer_polygon_coords = roi.coordinates().tolist()
         outer_polygon_coords.append(outer_polygon_coords[0]) # add beginning to end to close loop
         feature = Feature(geometry=Polygon([outer_polygon_coords]), properties={"id": cell_id, 'frame': frame}, bbox=[roi.left, roi.bottom, roi.right, roi.top])
+        export(feature, os.path.join(OUT_FOLDER, last_path, 'cells'), '{}-{}'.format(str(frame), cell_id))
         feature_list.append(feature)
 
-    util.export_file(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), last_frame)
+    export(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), str(last_frame))
     util.return_carriage(QUIET_MODE)
     util.msg_header('Done 🥂', QUIET_MODE)
     return
+
+
+def feature_list_to_json(feature_list: List) -> str:
+    feature_collection = FeatureCollection(feature_list)
+    return dumps(feature_collection)
+
+def feature_to_json(feature: Feature) -> str:
+    return dumps(feature)
+
+def export(data: Union[Feature, List], full_path: str, name: str):
+    if isinstance(data, Feature):
+        data = feature_to_json(data)
+    else:
+        data = feature_list_to_json(data)
+    util.export_file(data, full_path, name)
+    return
+
 
 def parse_frame(filename: str) -> int:
     return int(filename.split('-')[0])
