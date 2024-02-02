@@ -1,5 +1,6 @@
 import os
 import fnmatch
+from webbrowser import get
 from matlab_to_all import QUIET_MODE
 import util_common as util
 from roifile import ImagejRoi
@@ -13,9 +14,9 @@ QUIET_MODE = False
 
 
 # - cells folder
+# - better progress output (split percent by folders)
 # 👆  🍻🍻🍻 DONE 🍻🍻🍻  👆
 # - avoid overwrite by default
-# - better progress output (split percent by folders)
 # 🧊 ICEBOX 🧊
 # - command line args (in, out, quiet, force overwrite)
 # - maybe tracks folder, but probably not
@@ -35,14 +36,24 @@ def main():
                 util.msg('{} Found: {} files.'.format(util.textSpinner(found_count, 10_000), found_count), QUIET_MODE, True)
     util.msg('✅ Found: {} files'.format(found_count), QUIET_MODE, True)
     filename_list.sort(key=lambda f: (f[0], parse_frame(f[1]), parse_id(f[1])))
+    filename_stats = get_filename_stats(filename_list)
     util.return_carriage(QUIET_MODE)
+    util.msg('Found {} unique folders'.format(len(filename_stats)), QUIET_MODE)
     feature_list = []
     last_frame = -1
     last_path = ''
-    util.msg_header('Converting ROI to GeoJSON', QUIET_MODE)
-    for index, (path, name) in enumerate(filename_list):
-        util.updateLoadingMessage(index + 1, len(filename_list), '[{}]'.format(path), False)
+    file_count = 0
+    folder_count = 0
+    for path, name in filename_list:
         frame = parse_frame(name)
+        if path != last_path:
+            folder_count += 1
+            util.return_carriage(QUIET_MODE)
+            util.return_carriage(QUIET_MODE)
+            util.msg_header('Converting folder [{}/{}]: {}'.format(folder_count, len(filename_stats), path), QUIET_MODE)
+            file_count = 0
+        file_count += 1
+        util.updateLoadingMessage(file_count, filename_stats[path]['count'], 'files. {} of {} frames'.format(frame, filename_stats[path]['frames']), False)
         if last_frame != frame and last_frame != -1:
             export(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), str(last_frame))
             feature_list = []
@@ -58,10 +69,22 @@ def main():
         feature_list.append(feature)
 
     export(feature_list, os.path.join(OUT_FOLDER, last_path, 'frames'), str(last_frame))
+
+    util.return_carriage(QUIET_MODE)
     util.return_carriage(QUIET_MODE)
     util.msg_header('Done 🥂', QUIET_MODE)
     return
 
+
+def get_filename_stats(filename_list: List) -> dict:
+    filename_stats = {}
+    for path, name in filename_list:
+        frame = parse_frame(name)
+        if path not in filename_stats:
+            filename_stats[path] = {'count': 0, 'frames': 0}
+        filename_stats[path]['count'] += 1
+        filename_stats[path]['frames'] = max(filename_stats[path]['frames'], frame)
+    return filename_stats
 
 def feature_list_to_json(feature_list: List) -> str:
     feature_collection = FeatureCollection(feature_list)
