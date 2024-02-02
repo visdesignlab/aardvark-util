@@ -11,15 +11,12 @@ IN_FOLDER = './in/'
 OUT_FOLDER = './out/'
 
 QUIET_MODE = False
+OVERWRITE = True
 
-
-# - cells folder
-# - better progress output (split percent by folders)
-# 👆  🍻🍻🍻 DONE 🍻🍻🍻  👆
-# - avoid overwrite by default
 # 🧊 ICEBOX 🧊
 # - command line args (in, out, quiet, force overwrite)
 # - maybe tracks folder, but probably not
+# - if remove frames folder, can maybe improve perf of overwrite = False
 
 def main():
     util.msg_header('Finding ROI files', QUIET_MODE)
@@ -34,11 +31,9 @@ def main():
             found_count += 1
             if found_count % print_every == 0:
                 util.msg('{} Found: {} files.'.format(util.textSpinner(found_count, 10_000), found_count), QUIET_MODE, True)
-    util.msg('✅ Found: {} files'.format(found_count), QUIET_MODE, True)
     filename_list.sort(key=lambda f: (f[0], parse_frame(f[1]), parse_id(f[1])))
     filename_stats = get_filename_stats(filename_list)
-    util.return_carriage(QUIET_MODE)
-    util.msg('Found {} unique folders'.format(len(filename_stats)), QUIET_MODE)
+    util.msg('✅ Found: {} files in {} folders.'.format(found_count, len(filename_stats)), QUIET_MODE, True)
     feature_list = []
     last_frame = -1
     last_path = ''
@@ -98,7 +93,7 @@ def export(data: Union[Feature, List], full_path: str, name: str):
         data = feature_to_json(data)
     else:
         data = feature_list_to_json(data)
-    util.export_file(data, full_path, name)
+    util.export_file(data, full_path, name, OVERWRITE)
     return
 
 

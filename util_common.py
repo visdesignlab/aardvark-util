@@ -85,7 +85,9 @@ def textSpinner(step: int, update: int) -> str:
     return animation_frames[math.floor(step/update) % len(animation_frames)]
 
 
-def export_file(data: str, full_path: str, name: str):
+def export_file(data: str, full_path: str, name: str, overwrite: bool = False):
+    if not overwrite and os.path.exists(os.path.join(full_path, name + '.json')):
+        return
     save_path = os.path.join(full_path, name + '.json')
     ensure_directory_exists(save_path)
     with open(save_path, 'w') as out_file:
