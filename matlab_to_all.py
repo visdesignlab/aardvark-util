@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 import tifffile as tf
 from imantics import Mask
-from geojson import Feature, Polygon
+from geojson import Feature, Polygon, dumps
 import util_common as util
+import os
 
 IN_FOLDER = './in/'
 OUT_FOLDER = './out/'
@@ -103,20 +104,23 @@ def matlab_to_tiff_and_json(filename: str, cell_id_dict: Dict):
     util.msg('saving... done.', QUIET_MODE)
 
     util.msg_header('Extracting segmentations from ' + filename, QUIET_MODE)
+    out_path = OUT_FOLDER + filename
+    out_path = out_path.removesuffix('.mat') + '/'
     for frame_index in range(image_data.shape[2]):
         util.updateLoadingMessage(frame_index+1, image_data.shape[2], 'frames', QUIET_MODE)
-
+        frame_number = frame_index + 1
         seg_frame = seg_data[:,:,frame_index]
         unique_ids = set(seg_frame.flatten().tolist())
         unique_ids.remove(0)
         feature_list = []
+
         for seg_id in unique_ids:
             single_seg = seg_frame == seg_id
             mask = Mask(single_seg)
             polygons = mask.polygons()
             bbox = mask.bbox()
-            bbox_values = [bbox.min_point[0], bbox.min_point[1], bbox.max_point[0], bbox.max_point[1]]
-            key = str(frame_index + 1) + '-' + str(seg_id)
+            bbox_values = [bbox.min_point[0], bbox.max_point[1], bbox.max_point[0], bbox.min_point[1]]
+            key = str(frame_number) + '-' + str(seg_id)
             # print(cell_id_dict)
             # print(key)
             cell_id = cell_id_dict.get(key, -404)
@@ -124,11 +128,11 @@ def matlab_to_tiff_and_json(filename: str, cell_id_dict: Dict):
             for polygon_verts in polygons.points:
                 outer_polygon_coords = polygon_verts.tolist()
                 outer_polygon_coords.append(outer_polygon_coords[0]) # add beginning to end to close loop
-                feature = Feature(geometry=Polygon([outer_polygon_coords]), properties={"ID": cell_id}, bbox=bbox_values)
+                feature = Feature(geometry=Polygon([outer_polygon_coords]), properties={"id": cell_id,'frame': frame_number}, bbox=bbox_values)
+                util.export_file(dumps(feature), os.path.join(out_path, 'cells'), '{}-{}'.format(str(frame_number), cell_id), True)
                 feature_list.append(feature)
-        out_path = OUT_FOLDER + filename
-        out_path = out_path.removesuffix('.mat') + '/'
-        util.export_file(feature_list, out_path, frame_index + 1)
+
+        # util.export_file(feature_list, out_path, frame_index + 1)
     util.return_carriage(QUIET_MODE)
     util.msg('done.', QUIET_MODE)
     return
