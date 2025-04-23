@@ -124,3 +124,16 @@ If you already have a list of `*.roi` objects they can be converted to this form
 ## Creating multi-file ome-tiff sets (For Devin's Reference)
 
 `./bfconvert -option ometiff.companion ./out/images.companion.ome ./in/images.ome.tif ./out/image_t%t.ome.tiff`
+
+## Notes on importing from TrackMate
+
+- special steps are required to name the branches of lineages in a way that makes it possible to reconstruct the lineage
+- this exports appends an a/b to the end of the label.
+- they don't export a parent column, but we can fairly easily infer this now. This is what `infer_parent_from_id.py` does.
+- this complicates the link to the roi. (without the special steps the label matches the roi filename exactly) with this, the roi file
+  is in the form {label}-{index}.roi. Where `label` is from the `LABEL` column. Since there are multiple rows with the same label, it includes
+  an index for which one it refers to. This index is zero-indexed, and when index=0 the roi file is simply {label}.roi.
+- The TrackMate table also zero-indices the frame column. This needs to be adjusted to one-indexed for things to line up correctly
+- The table should also be sorted by frame before import.
+- `roi_to_geojson_trackmate.py` currently assumes the frame has been sorted and one-indexed (we did this manually for the first import)
+  then will generate the geojson files from the rois correctly.
