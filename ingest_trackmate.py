@@ -53,31 +53,43 @@ OVERWRITE = True
 
 
 def main(csv_filename, roi_folder, output_folder):
+
+    # Column names
+    frame = "FRAME"
+    position_x = "POSITION_X"
+    position_y = "POSITION_Y"
+    label = "LABEL"
+    location = "location"
+
     # load csv into df
     df = pd.read_csv(csv_filename)
+
     # delete extra rows with metadata
     df = df.drop([0, 1, 2, 3])
     # df = df.infer_objects() # this made everything an object, but I would've expected this to work
 
+    # reload and clean up temporary file.
     temp_csv = os.path.join(output_folder, "temp.csv")
     df.to_csv(temp_csv, index=False)
     df = pd.read_csv(temp_csv)
     os.remove(temp_csv)  # Clean up the temporary file
+
     # sort by frame
     # convert frame to int
-    df["FRAME"] = df["FRAME"] + 1
-    df = df.sort_values(by=["FRAME"])
+    df[frame] = df[frame] + 1
+    df = df.sort_values(by=[frame])
 
+    # Scaling factor assumes positions rescaled from pixels to microns
     scaling_factor = 1.85
-    df["POSITION_X"] = df["POSITION_X"] * scaling_factor
-    df["POSITION_Y"] = df["POSITION_Y"] * scaling_factor
+    df[position_x] = df[position_x] * scaling_factor
+    df[position_y] = df[position_y] * scaling_factor
 
     # remove MANUAL_SPOT_COLOR column since it is all empty and is causing problems.
     if "MANUAL_SPOT_COLOR" in df.columns:
         df = df.drop(columns=["MANUAL_SPOT_COLOR"])
 
     # create new column for the track ID by dropping the spot ID from the label column
-    df["loon_track"] = df["LABEL"].apply(lambda x: os.path.splitext(x)[0])
+    df["loon_track"] = df[label].apply(lambda x: os.path.splitext(x)[0])
 
     # move new column to first position
     cols = list(df.columns)
@@ -99,7 +111,7 @@ def main(csv_filename, roi_folder, output_folder):
     # ./bftools/bfconvert -option ometiff.companion ./out/TRACKMATE_2/images/images.companion.ome ./in/TRACKMATE_2/Merged.tif ./out/TRACKMATE_2/images/image_t%t.ome.tiff
 
     # create parquet file from the csv
-    df["location"] = 2
+    df[location] = 2
     df.to_parquet(os.path.join(output_folder, "metadata.parquet"), index=False)
 
     return
