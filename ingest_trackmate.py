@@ -16,7 +16,25 @@
 # Actually, simplify the logic for matching the roi files. This looks like it has a 1:1 mapping between label and roi filename.
 
 """
-Expect as input a csv file and a folder with roi files.
+Convert TrackMate outputs into a format compatable for Loon software.
+
+Inputs: 
+- A CSV file from TrackMate
+    - Must currently include 'LABEL', 'FRAME', 'POSITION_X', 'POSITION_Y' columns
+- A folder containing ROI files from TrackMate
+
+Process:
+- Read the CSV file, remove unnecessary rows / columns, sort by frame
+- Infer/Add a 'parent' column to the csv file, which includes the parents of each track
+- Output that corrected csv
+- Convert the that corrected csv to a Parquet file
+- Convert ROI files to GeoJSON format, creating a folder structure based on frames
+
+Outputs:
+- A metadata.csv file with metadata for Loon
+- A metadata.parquet file with metadata for Loon
+- A segmentations folder with geojson files for each frame
+
 """
 
 import os
@@ -55,7 +73,8 @@ def main(csv_filename, roi_folder, output_folder):
     df["POSITION_Y"] = df["POSITION_Y"] * scaling_factor
 
     # remove MANUAL_SPOT_COLOR column since it is all empty and is causing problems.
-    df = df.drop(columns=["MANUAL_SPOT_COLOR"])
+    if "MANUAL_SPOT_COLOR" in df.columns:
+        df = df.drop(columns=["MANUAL_SPOT_COLOR"])
 
     # create new column for the track ID by dropping the spot ID from the label column
     df["loon_track"] = df["LABEL"].apply(lambda x: os.path.splitext(x)[0])
