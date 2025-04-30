@@ -116,7 +116,7 @@ def main(csv_filename, roi_folder, output_folder):
 
     return
 
-
+# Given a dataframe with a track label column, create a parent column by infering parent values from labels.
 def infer_parent_from_id(df, output_csv):
     # Add a new column 'parent' based on the 'LABEL' column
     def calculate_parent(label):
@@ -144,12 +144,17 @@ def infer_parent_from_id(df, output_csv):
 
 ######################
 
-
+# Given a folder of ROI files and a dataframe, outputs a folder of GeoJson files
 def roi_to_geojson(df, roi_folder, output_folder):
+    # Checks for empty
     util.ensure_directory_exists(output_folder)
     util.msg_header("Finding ROI files", QUIET_MODE)
+
+    # Initialise pattern & filename
     pattern = "Track_*.roi"
     filename_list = []
+
+    
     found_count = 0
     print_every = 10
     for root, _, files in os.walk(roi_folder):
