@@ -51,15 +51,17 @@ import pandas as pd
 QUIET_MODE = False
 OVERWRITE = True
 
+# Column names from file
+frame = "FRAME"
+position_x = "POSITION_X"
+position_y = "POSITION_Y"
+label = "LABEL"
+location = "location"
+
+# New track ID column
+loon_track = "loon_track"
 
 def main(csv_filename, roi_folder, output_folder):
-
-    # Column names
-    frame = "FRAME"
-    position_x = "POSITION_X"
-    position_y = "POSITION_Y"
-    label = "LABEL"
-    location = "location"
 
     # load csv into df
     df = pd.read_csv(csv_filename)
@@ -89,11 +91,11 @@ def main(csv_filename, roi_folder, output_folder):
         df = df.drop(columns=["MANUAL_SPOT_COLOR"])
 
     # create new column for the track ID by dropping the spot ID from the label column
-    df["loon_track"] = df[label].apply(lambda x: os.path.splitext(x)[0])
+    df[loon_track] = df[label].apply(lambda x: os.path.splitext(x)[0])
 
     # move new column to first position
     cols = list(df.columns)
-    cols.insert(0, cols.pop(cols.index("loon_track")))
+    cols.insert(0, cols.pop(cols.index(loon_track)))
     df = df[cols]
 
     # infer parent from the label.
@@ -125,12 +127,12 @@ def infer_parent_from_id(df, output_csv):
                 return label
             parent = label[:-1].rstrip(".")
             # check if parent exists in the LABEL column
-            if parent not in df["loon_track"].values:
+            if parent not in df[loon_track].values:
                 # If parent does not exist, return the original label
                 return label
         return parent
 
-    df["parent"] = df["loon_track"].apply(calculate_parent)
+    df["parent"] = df[loon_track].apply(calculate_parent)
     # Reorder columns so 'parent' is the second column
     cols = list(df.columns)
     cols.insert(1, cols.pop(cols.index("parent")))
@@ -297,7 +299,7 @@ def parse_frame(filename: str, df) -> int:
     # Remove file extension from filename
     name_base = os.path.splitext(filename)[0]
     # Gets frames from corresponding label.
-    frames = df.loc[df["LABEL"] == name_base, "FRAME"]
+    frames = df.loc[df[label] == name_base, frame]
     if len(frames) == 0 or len(frames) > 1:
         raise ValueError(f"Frame not found for {name_base} in DataFrame.")
     
