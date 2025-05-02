@@ -150,13 +150,11 @@ def roi_to_geojson(df, roi_folder, output_folder):
     util.ensure_directory_exists(output_folder)
     util.msg_header("Finding ROI files", QUIET_MODE)
 
-    # Initialise pattern & filename
     pattern = "Track_*.roi"
     filename_list = []
-
-    
     found_count = 0
     print_every = 10
+    # Recursively searches for roi files matching 'pattern'
     for root, _, files in os.walk(roi_folder):
         path = root.replace(roi_folder, "", 1)
         for name in fnmatch.filter(files, pattern):
@@ -170,20 +168,30 @@ def roi_to_geojson(df, roi_folder, output_folder):
                     QUIET_MODE,
                     True,
                 )
+
+    # Sort the ROI filenames by folder, frame number, and track ID.
     filename_list.sort(key=lambda f: (f[0], parse_frame(f[1], df), parse_id(f[1])))
+
+    # Log the number of files found
     filename_stats = get_filename_stats(filename_list, df)
     util.msg(
         "✅ Found: {} files in {} folders.".format(found_count, len(filename_stats)),
         QUIET_MODE,
         True,
     )
+
+
     feature_list = []
     last_frame = -1
     last_path = ""
     file_count = 0
     folder_count = 0
+
+    # For each ROI file
     for path, name in filename_list:
         frame = parse_frame(name, df)
+
+        # Check if we're in a new folder; if so, update folder count and print a header.
         if path != last_path:
             folder_count += 1
             util.return_carriage(QUIET_MODE)
@@ -196,12 +204,16 @@ def roi_to_geojson(df, roi_folder, output_folder):
             )
             file_count = 0
         file_count += 1
+        
+        # Update the loading message with current file and frame progress.
         util.updateLoadingMessage(
             file_count,
             filename_stats[path]["count"],
             "files. {} of {} frames".format(frame, filename_stats[path]["frames"]),
             False,
         )
+
+        # When a new frame is encountered, export the collected features for the previous frame.
         if last_frame != frame and last_frame != -1:
             export(
                 feature_list,
@@ -209,10 +221,16 @@ def roi_to_geojson(df, roi_folder, output_folder):
                 str(last_frame),
             )
             feature_list = []
+
+        # Update the last processed frame and folder path trackers.
         last_frame = frame
         last_path = path
+
+        # Construct the full path to the ROI file and parse its cell ID.
         filename = os.path.join(roi_folder, path, name)
         cell_id = parse_id(name)
+
+        # Read the ROI file and convert its coordinates into a polygon feature.
         roi = ImagejRoi.fromfile(filename)
         outer_polygon_coords = roi.coordinates().tolist()
         outer_polygon_coords.append(
@@ -223,23 +241,27 @@ def roi_to_geojson(df, roi_folder, output_folder):
             properties={"id": cell_id, "frame": frame},
             bbox=[roi.left, roi.bottom, roi.right, roi.top],
         )
+
+        # Export the individual cell feature into the corresponding folder.
         export(
             feature,
             os.path.join(output_folder, last_path, "cells"),
             "{}-{}".format(str(frame), cell_id),
         )
         feature_list.append(feature)
-
+    # Export any remaining features for the last processed frame.
     export(
         feature_list, os.path.join(output_folder, last_path, "frames"), str(last_frame)
     )
 
+    # Finalize the output by returning carriage and printing the completion message.
     util.return_carriage(QUIET_MODE)
     util.return_carriage(QUIET_MODE)
     util.msg_header("Done 🥂", QUIET_MODE)
     return
 
 
+# Returns the count and frames of filenames.
 def get_filename_stats(filename_list: List, df) -> dict:
     filename_stats = {}
     for path, name in filename_list:
@@ -259,24 +281,30 @@ def feature_list_to_json(feature_list: List) -> str:
 def feature_to_json(feature: Feature) -> str:
     return dumps(feature)
 
-
+# Export ROI data
 def export(data: Union[Feature, List], full_path: str, name: str):
+    # If data is a single feature, convert to JSON
     if isinstance(data, Feature):
         data = feature_to_json(data)
+    # Otherwise convert feature list to FeatureCollection JSON
     else:
         data = feature_list_to_json(data)
     util.export_file(data, full_path, name, OVERWRITE)
     return
 
-
+# Given a filename and df, extract unique frame number.
 def parse_frame(filename: str, df) -> int:
+    # Remove file extension from filename
     name_base = os.path.splitext(filename)[0]
+    # Gets frames from corresponding label.
     frames = df.loc[df["LABEL"] == name_base, "FRAME"]
     if len(frames) == 0 or len(frames) > 1:
         raise ValueError(f"Frame not found for {name_base} in DataFrame.")
+    
+    # Returns the frame number as an int.
     return int(list(frames)[0])
 
-
+# Given a filename, returns the track_id
 def parse_id(filename: str) -> int:
     name_base = os.path.splitext(filename)[0]
     track_id = os.path.splitext(name_base)[0]
