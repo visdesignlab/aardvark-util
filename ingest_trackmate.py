@@ -81,8 +81,24 @@ def main(csv_filename, roi_folder, output_folder):
     df[frame] = df[frame] + 1
     df = df.sort_values(by=[frame])
 
+
+    df = df.rename(columns={"LOC": location})
+
+    # check if the required columns are present
+    required_columns = [frame, position_x, position_y, label]
+    for col in required_columns:
+        if col not in df.columns:
+            raise ValueError(f"Required column '{col}' is missing from the CSV file.")
+        
+    # If location column does not exist, create it
+    if location not in df.columns:
+        print(f"Column '{location}' not found in the CSV file. Creating a new column with default value 0.")
+        # create a location column with the same value as the label column
+        df[location] = 0
+
+    print(df[location])
     # Scaling factor assumes positions rescaled from pixels to microns
-    scaling_factor = 1.85
+    scaling_factor = 1.0
     df[position_x] = df[position_x] * scaling_factor
     df[position_y] = df[position_y] * scaling_factor
 
@@ -113,7 +129,6 @@ def main(csv_filename, roi_folder, output_folder):
     # ./bftools/bfconvert -option ometiff.companion ./out/TRACKMATE_2/images/images.companion.ome ./in/TRACKMATE_2/Merged.tif ./out/TRACKMATE_2/images/image_t%t.ome.tiff
 
     # create parquet file from the csv
-    df[location] = 2
     df.to_parquet(os.path.join(output_folder, "metadata.parquet"), index=False)
 
     return
@@ -298,13 +313,10 @@ def export(data: Union[Feature, List], full_path: str, name: str):
 def parse_frame(filename: str, df) -> int:
     # Remove file extension from filename
     name_base = os.path.splitext(filename)[0]
-    # Gets frames from corresponding label.
-    frames = df.loc[df[label] == name_base, frame]
-    if len(frames) == 0 or len(frames) > 1:
-        raise ValueError(f"Frame not found for {name_base} in DataFrame.")
-    
-    # Returns the frame number as an int.
-    return int(list(frames)[0])
+    if '-' not in name_base:
+        return 1
+    frame = name_base.split("-")[1]
+    return int(frame) + 1
 
 # Given a filename, returns the track_id
 def parse_id(filename: str) -> int:
