@@ -136,18 +136,18 @@ def main(csv_filename, roi_folder, output_folder):
 # Given a dataframe with a track label column, create a parent column by infering parent values from labels.
 def infer_parent_from_id(df, output_csv):
     # Add a new column 'parent' based on the 'LABEL' column
-    def calculate_parent(label):
-        if isinstance(label, str):
-            if "." not in label:
-                return label
-            parent = label[:-1].rstrip(".")
+    def calculate_parent(child_label):
+        if isinstance(child_label, str):
+            if "." not in child_label:
+                return child_label
+            parent = child_label[:-1].rstrip(".")
             # check if parent exists in the LABEL column
-            if parent not in df[loon_track].values:
+            if parent not in df[label].values:
                 # If parent does not exist, return the original label
-                return label
+                return child_label
         return parent
 
-    df["parent"] = df[loon_track].apply(calculate_parent)
+    df["parent"] = df[label].apply(calculate_parent)
     # Reorder columns so 'parent' is the second column
     cols = list(df.columns)
     cols.insert(1, cols.pop(cols.index("parent")))
