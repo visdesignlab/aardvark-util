@@ -46,6 +46,7 @@ from roifile import ImagejRoi
 from geojson import Feature, Polygon, FeatureCollection, dumps
 from typing import Union, List
 import pandas as pd
+import re
 
 
 QUIET_MODE = False
@@ -55,7 +56,8 @@ OVERWRITE = True
 frame = "FRAME"
 position_x = "POSITION_X"
 position_y = "POSITION_Y"
-label = "LABEL"
+inputLabel = "LABEL"
+label = "LOC-LABEL"
 location = "location"
 
 # New track ID column
@@ -67,9 +69,11 @@ def main(csv_filename, roi_folder, output_folder):
     df = pd.read_csv(csv_filename)
 
     # delete extra rows with metadata
-    df = df.drop([0, 1, 2, 3])
+    df = df.drop([0, 1, 2])
     # df = df.infer_objects() # this made everything an object, but I would've expected this to work
 
+    print(df.head())
+    print(df.dtypes)
     # reload and clean up temporary file.
     temp_csv = os.path.join(output_folder, "temp.csv")
     df.to_csv(temp_csv, index=False)
@@ -85,7 +89,7 @@ def main(csv_filename, roi_folder, output_folder):
     df = df.rename(columns={"LOC": location})
 
     # check if the required columns are present
-    required_columns = [frame, position_x, position_y, label]
+    required_columns = [frame, position_x, position_y]
     for col in required_columns:
         if col not in df.columns:
             raise ValueError(f"Required column '{col}' is missing from the CSV file.")
@@ -96,7 +100,11 @@ def main(csv_filename, roi_folder, output_folder):
         # create a location column with the same value as the label column
         df[location] = 0
 
-    print(df[location])
+    # If LOC-LABEL column does not exist, create it
+    if label not in df.columns:
+        print(f"Column '{label}' not found in the CSV file. Creating a new column with default value 'unknown'.")
+        # create a LOC-LABEL column with the same value as the label column
+        df[label] = df[location].astype(str) + "_" + df[inputLabel].astype(str)
     # Scaling factor assumes positions rescaled from pixels to microns
     scaling_factor = 1.0
     df[position_x] = df[position_x] * scaling_factor
@@ -204,8 +212,10 @@ def roi_to_geojson(df, roi_folder, output_folder):
     file_count = 0
     folder_count = 0
 
-    # For each ROI file
+    # For each ROI file ... 
     for path, name in filename_list:
+
+        # 
         frame = parse_frame(name, df)
 
         # Check if we're in a new folder; if so, update folder count and print a header.
@@ -246,7 +256,6 @@ def roi_to_geojson(df, roi_folder, output_folder):
         # Construct the full path to the ROI file and parse its cell ID.
         filename = os.path.join(roi_folder, path, name)
         cell_id = parse_id(name)
-
         # Read the ROI file and convert its coordinates into a polygon feature.
         roi = ImagejRoi.fromfile(filename)
         outer_polygon_coords = roi.coordinates().tolist()
@@ -258,8 +267,9 @@ def roi_to_geojson(df, roi_folder, output_folder):
             properties={"id": cell_id, "frame": frame},
             bbox=[roi.left, roi.bottom, roi.right, roi.top],
         )
-
         # Export the individual cell feature into the corresponding folder.
+        # Export in format frame-cell_id
+        # Example: 26-73_Track_965.b.json
         export(
             feature,
             os.path.join(output_folder, last_path, "cells"),
@@ -313,16 +323,31 @@ def export(data: Union[Feature, List], full_path: str, name: str):
 def parse_frame(filename: str, df) -> int:
     # Remove file extension from filename
     name_base = os.path.splitext(filename)[0]
-    if '-' not in name_base:
-        return 1
-    frame = name_base.split("-")[1]
-    return int(frame) + 1
+    # Get the track ID and cell index from the name_base
+    if "-" not in name_base:
+        name_base = name_base + "-0" 
+    track_id, cell_index = name_base.split("-")
+
+    # Find the track based on track id, sort by frame
+    track = df.loc[df[inputLabel] == track_id]
+    track = track.sort_values(by=[frame])
+    # Find the nth (cell_index) frame for this track
+    track_frame = track.iloc[int(cell_index)][frame]
+    
+    return int(track_frame)
 
 # Given a filename, returns the track_id
 def parse_id(filename: str) -> int:
-    name_base = os.path.splitext(filename)[0]
-    track_id = os.path.splitext(name_base)[0]
-    return track_id
+    track_id = os.path.splitext(filename)[0]
+    # Remove -number suffix if it exists (e.g., "Track_618.abb-62" -> "Track_618.abb")
+    track_id = re.sub(r'-\d+$', '', track_id)
+
+    # Get value of the location column for this cell
+    # Todo acutal location value
+    cell_location = 73
+
+    final_cell_id = f"{cell_location}_{track_id}"
+    return final_cell_id
 
 
 ######################
