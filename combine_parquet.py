@@ -21,6 +21,9 @@ def main():
     # Concatenate (headers preserved only once)
     combined = pd.concat(dfs, ignore_index=True)
 
+    # Add tags
+    combined["experiment_name"] = "quil_5day_clean"
+
     # Write out
     combined.to_parquet(args.output)
     print(f"✅ Combined {len(args.inputs)} files → {args.output}")
