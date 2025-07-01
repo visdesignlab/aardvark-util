@@ -356,11 +356,16 @@ def run_gui():
     y_scroll = tk.Scrollbar(output_frame, orient=tk.VERTICAL, command=text_box.yview)
     x_scroll = tk.Scrollbar(output_frame, orient=tk.HORIZONTAL, command=text_box.xview)
     text_box.config(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+    # Show the console output box when Convert is clicked
     def show_output_box():
         output_frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 16))
         text_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Scrolling
         y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         x_scroll.pack(fill=tk.X)
+
+    # Redirect stdout (console output) to the text box
     class StdoutRedirector:
         def __init__(self, widget):
             self.widget = widget
@@ -371,23 +376,24 @@ def run_gui():
             self.widget.config(state=tk.DISABLED)
         def flush(self):
             pass
+    # Utility messages go to the GUI output box
     def gui_msg(*args, **kwargs):
         msg = args[0] if args else ""
         print(msg)
+    # Print a header message in the GUI output box
     def gui_msg_header(*args, **kwargs):
         msg = args[0] if args else ""
         print(msg)
-    def gui_updateLoadingMessage(*args, **kwargs):
-        pass  # No per-file/progress status
-    def gui_return_carriage(*args, **kwargs):
-        pass
     util.msg = gui_msg
     util.msg_header = gui_msg_header
-    util.updateLoadingMessage = gui_updateLoadingMessage
-    util.return_carriage = gui_return_carriage
+
+    # Function to run batch conversion in a separate thread
     def run_batch_conversion_thread(input_folder, output_folder):
         try:
+            # From the input, get each location (subfolder) and process each one
             subfolders = [f for f in os.listdir(input_folder) if os.path.isdir(os.path.join(input_folder, f))]
+            parquet_paths = []
+            # For this location ...
             for sub in subfolders:
                 sub_path = os.path.join(input_folder, sub)
                 # Find CSV file and ROI folder in sub_path
@@ -398,36 +404,61 @@ def run_gui():
                     continue
                 csv_file = os.path.join(sub_path, csv_files[0])
                 roi_folder = os.path.join(sub_path, roi_folders[0])
-                # Use unique output names/folders for each subfolder
-                base = os.path.basename(sub)
-                out_metadata_csv = os.path.join(output_folder, f"metadata_{base}.csv")
-                out_metadata_parquet = os.path.join(output_folder, f"metadata_{base}.parquet")
-                out_segmentations = os.path.join(output_folder, f"segmentations_{base}")
+                # Create output folder for this location
+                out_location_folder = os.path.join(output_folder, sub)
+                os.makedirs(out_location_folder, exist_ok=True)
+                out_metadata_csv = os.path.join(out_location_folder, "metadata.csv")
+                out_segmentations = os.path.join(out_location_folder, "segmentations")
+                # Parquet goes to temp file to save memory and then combined later
+                out_metadata_parquet = os.path.join(output_folder, f"_tmp_{sub}.parquet")
+
+                # Finally, process the CSV and ROI files for this location
                 print(f"Processing '{sub}'...\n")
                 try:
-                    main(csv_file, roi_folder, output_folder, out_metadata_csv, out_metadata_parquet, out_segmentations)
+                    main(csv_file, roi_folder, out_location_folder, out_metadata_csv, out_metadata_parquet, out_segmentations)
+                    parquet_paths.append(out_metadata_parquet)
                     print(f"Done: {sub}\n")
                 except Exception as e:
                     print(f"Error in '{sub}': {e}\n")
+            # Combine all temp parquet files into master metadata.parquet
+            if parquet_paths:
+                dfs = [pd.read_parquet(p) for p in parquet_paths]
+                combined = pd.concat(dfs, ignore_index=True)
+                master_parquet = os.path.join(output_folder, "metadata.parquet")
+                combined.to_parquet(master_parquet)
+                print(f"✅ Combined {len(parquet_paths)} files → {master_parquet}")
+                # Remove temp parquet files
+                for p in parquet_paths:
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
             print("\nBatch conversion complete!\n")
             root.after(0, lambda: messagebox.showinfo("Success", "Batch conversion complete!"))
         except Exception as e:
             print(f"An error occurred:\n{e}\n")
             error_message = f"An error occurred:\n{e}"
             root.after(0, lambda msg=error_message: messagebox.showerror("Error", msg))
+
+    # Function to run the batch conversion when Convert button is clicked
     def run_batch_conversion():
+        # Initialize
         input_folder = input_var.get()
         output_folder = output_var.get()
         if not input_folder or not output_folder:
             messagebox.showerror("Missing Input", "Please select both input and output folders.")
             return
+        # Show and initialize the console output box
         show_output_box()
         sys.stdout = StdoutRedirector(text_box)
         sys.stderr = StdoutRedirector(text_box)
         text_box.config(state=tk.NORMAL)
         text_box.delete(1.0, tk.END)
         text_box.config(state=tk.DISABLED)
+        # Finally start the batch conversion in a separate thread
         threading.Thread(target=run_batch_conversion_thread, args=(input_folder, output_folder), daemon=True).start()
+
+    # Convert button clicked
     tk.Button(root, text="Batch Convert", command=run_batch_conversion, font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").pack(pady=24)
     root.mainloop()
 
