@@ -66,7 +66,7 @@ location = "location"
 # New track ID column
 loon_track = "loon_track"
 
-def main(csv_filename, roi_folder, output_folder):
+def main(csv_filename, roi_folder, output_folder, metadata_csv=None, metadata_parquet=None, segmentations_folder=None):
     # load csv into df
     df = pd.read_csv(csv_filename)
 
@@ -120,14 +120,15 @@ def main(csv_filename, roi_folder, output_folder):
     df = df[cols]
 
     # infer parent from the label.
-    output_csv_filename = os.path.join(output_folder, "metadata.csv")
+    # Use custom output names if provided
+    output_csv_filename = metadata_csv if metadata_csv else os.path.join(output_folder, "metadata.csv")
     df = infer_parent_from_id(df, output_csv_filename)
 
-    geojson_output_folder = os.path.join(output_folder, "segmentations")
+    geojson_output_folder = segmentations_folder if segmentations_folder else os.path.join(output_folder, "segmentations")
     roi_to_geojson(df, roi_folder, geojson_output_folder)
 
-    # create parquet file from the csv
-    df.to_parquet(os.path.join(output_folder, "metadata.parquet"), index=False)
+    parquet_path = metadata_parquet if metadata_parquet else os.path.join(output_folder, "metadata.parquet")
+    df.to_parquet(parquet_path, index=False)
 
     return
 
@@ -326,7 +327,7 @@ def parse_id(filename: str) -> int:
 ######################
 def run_gui():
     root = tk.Tk()
-    root.title("Convert Trackmate Data to Loon Data")
+    root.title("Batch Convert Trackmate Data to Loon Data")
     root.geometry("900x600")
     root.configure(bg="white")
 
@@ -338,22 +339,17 @@ def run_gui():
     text_font = ("Consolas", 13)
 
     # Input section
-    tk.Label(root, text="Convert Trackmate Data to Loon Data", font=title_font, bg="white", fg="#222").pack(pady=18)
-    csv_var = tk.StringVar()
-    roi_var = tk.StringVar()
+    tk.Label(root, text="Batch Convert Trackmate Data to Loon Data", font=title_font, bg="white", fg="#222").pack(pady=18)
+    input_var = tk.StringVar()
     output_var = tk.StringVar()
     frame = tk.Frame(root, bg="white")
     frame.pack(pady=16)
-    # Labels for each input
-    tk.Label(frame, text="CSV File:", font=label_font, bg="white", fg="#222").grid(row=0, column=0, sticky="e", padx=6, pady=8)
-    tk.Entry(frame, textvariable=csv_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=0, column=1, padx=6, pady=8)
-    tk.Button(frame, text="Browse", command=lambda: csv_var.set(filedialog.askopenfilename(title="Select TrackMate CSV File", filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=0, column=2, padx=6, pady=8)
-    tk.Label(frame, text="ROI Folder:", font=label_font, bg="white", fg="#222").grid(row=1, column=0, sticky="e", padx=6, pady=8)
-    tk.Entry(frame, textvariable=roi_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=1, column=1, padx=6, pady=8)
-    tk.Button(frame, text="Browse", command=lambda: roi_var.set(filedialog.askdirectory(title="Select ROI Folder")), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=1, column=2, padx=6, pady=8)
-    tk.Label(frame, text="Output Folder:", font=label_font, bg="white", fg="#222").grid(row=2, column=0, sticky="e", padx=6, pady=8)
-    tk.Entry(frame, textvariable=output_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=2, column=1, padx=6, pady=8)
-    tk.Button(frame, text="Browse", command=lambda: output_var.set(filedialog.askdirectory(title="Select Output Folder")), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=2, column=2, padx=6, pady=8)
+    tk.Label(frame, text="Input Folder:", font=label_font, bg="white", fg="#222").grid(row=0, column=0, sticky="e", padx=6, pady=8)
+    tk.Entry(frame, textvariable=input_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=0, column=1, padx=6, pady=8)
+    tk.Button(frame, text="Browse", command=lambda: input_var.set(filedialog.askdirectory(title="Select Input Folder")), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=0, column=2, padx=6, pady=8)
+    tk.Label(frame, text="Output Folder:", font=label_font, bg="white", fg="#222").grid(row=1, column=0, sticky="e", padx=6, pady=8)
+    tk.Entry(frame, textvariable=output_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=1, column=1, padx=6, pady=8)
+    tk.Button(frame, text="Browse", command=lambda: output_var.set(filedialog.askdirectory(title="Select Output Folder")), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=1, column=2, padx=6, pady=8)
     # Output section (hidden until Convert is clicked)
     output_frame = tk.Frame(root, bg="white")
     text_box = tk.Text(output_frame, wrap=tk.NONE, height=14, state=tk.DISABLED, font=text_font, bg="white", fg="#222", insertbackground="#222")
@@ -389,21 +385,41 @@ def run_gui():
     util.msg_header = gui_msg_header
     util.updateLoadingMessage = gui_updateLoadingMessage
     util.return_carriage = gui_return_carriage
-    def run_conversion_thread(csv_file, roi_folder, output_folder):
+    def run_batch_conversion_thread(input_folder, output_folder):
         try:
-            main(csv_file, roi_folder, output_folder)
-            print("\nConversion complete!\n")
-            root.after(0, lambda: messagebox.showinfo("Success", "Conversion complete!"))
+            subfolders = [f for f in os.listdir(input_folder) if os.path.isdir(os.path.join(input_folder, f))]
+            for sub in subfolders:
+                sub_path = os.path.join(input_folder, sub)
+                # Find CSV file and ROI folder in sub_path
+                csv_files = [f for f in os.listdir(sub_path) if f.lower().endswith('.csv')]
+                roi_folders = [f for f in os.listdir(sub_path) if os.path.isdir(os.path.join(sub_path, f)) and 'roi' in f.lower()]
+                if not csv_files or not roi_folders:
+                    print(f"Skipping '{sub}': missing CSV or ROI folder\n")
+                    continue
+                csv_file = os.path.join(sub_path, csv_files[0])
+                roi_folder = os.path.join(sub_path, roi_folders[0])
+                # Use unique output names/folders for each subfolder
+                base = os.path.basename(sub)
+                out_metadata_csv = os.path.join(output_folder, f"metadata_{base}.csv")
+                out_metadata_parquet = os.path.join(output_folder, f"metadata_{base}.parquet")
+                out_segmentations = os.path.join(output_folder, f"segmentations_{base}")
+                print(f"Processing '{sub}'...\n")
+                try:
+                    main(csv_file, roi_folder, output_folder, out_metadata_csv, out_metadata_parquet, out_segmentations)
+                    print(f"Done: {sub}\n")
+                except Exception as e:
+                    print(f"Error in '{sub}': {e}\n")
+            print("\nBatch conversion complete!\n")
+            root.after(0, lambda: messagebox.showinfo("Success", "Batch conversion complete!"))
         except Exception as e:
             print(f"An error occurred:\n{e}\n")
             error_message = f"An error occurred:\n{e}"
             root.after(0, lambda msg=error_message: messagebox.showerror("Error", msg))
-    def run_conversion():
-        csv_file = csv_var.get()
-        roi_folder = roi_var.get()
+    def run_batch_conversion():
+        input_folder = input_var.get()
         output_folder = output_var.get()
-        if not csv_file or not roi_folder or not output_folder:
-            messagebox.showerror("Missing Input", "Please select all required files/folders.")
+        if not input_folder or not output_folder:
+            messagebox.showerror("Missing Input", "Please select both input and output folders.")
             return
         show_output_box()
         sys.stdout = StdoutRedirector(text_box)
@@ -411,8 +427,8 @@ def run_gui():
         text_box.config(state=tk.NORMAL)
         text_box.delete(1.0, tk.END)
         text_box.config(state=tk.DISABLED)
-        threading.Thread(target=run_conversion_thread, args=(csv_file, roi_folder, output_folder), daemon=True).start()
-    tk.Button(root, text="Convert", command=run_conversion, font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").pack(pady=24)
+        threading.Thread(target=run_batch_conversion_thread, args=(input_folder, output_folder), daemon=True).start()
+    tk.Button(root, text="Batch Convert", command=run_batch_conversion, font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").pack(pady=24)
     root.mainloop()
 
 ######################
