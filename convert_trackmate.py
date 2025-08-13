@@ -327,29 +327,63 @@ def parse_id(filename: str) -> int:
 ######################
 def run_gui():
     root = tk.Tk()
-    root.title("Batch Convert Trackmate Data to Loon Data")
+    root.title("Convert Trackmate Data to Loon Data")
     root.geometry("900x600")
     root.configure(bg="white")
 
-    # Define fonts
+    # Fonts
     title_font = ("Arial", 22, "italic")
     label_font = ("Arial", 14, "italic")
     entry_font = ("Arial", 14)
     button_font = ("Arial", 14, "bold")
     text_font = ("Consolas", 13)
 
-    # Input section
-    tk.Label(root, text="Batch Convert Trackmate Data to Loon Data", font=title_font, bg="white", fg="#222").pack(pady=18)
+    # Step 1: Format your data
+    step1_frame = tk.Frame(root, bg="white")
+    step1_frame.pack(pady=16, fill=tk.X, padx=16)
+
+    # Center the title label
+    tk.Label(step1_frame, text="Step 1: Format your data", font=title_font, bg="white", fg="#222").pack(anchor="center", pady=(0, 8))
+    tk.Label(step1_frame, text="Input folder structure:", font=("Arial", 16, "bold"), bg="white", fg="#222").pack(anchor="center", pady=(0, 8))
+
+    instructions = (
+        "    Each sub-folder should represent a location and contain:\n"
+        "       - A CSV file exported from TrackMate\n"
+        "       - A folder containing ROI files (name contains 'roi')\n"
+        "\n"
+        "    Example:\n"
+        "       input /\n"
+        "           --- Location1 /\n"
+        "               --- data.csv\n"
+        "               --- rois /\n"
+        "           --- Location2 /\n"
+        "               --- data.csv\n"
+        "               --- rois/\n"
+    )
+
+    # Add a frame to hold the instructions and align them to the left
+    instructions_frame = tk.Frame(step1_frame, bg="white")
+    instructions_frame.pack(anchor="center")  # Center the entire Step 1 section
+
+    # Left-align the instructions within the frame
+    tk.Label(instructions_frame, text=instructions, font=("Consolas", 12), bg="white", fg="#222", justify="left", anchor="w").pack(fill=tk.X)
+
+    # Step 2: Specify input and output folders
+    tk.Label(root, text="Step 2: Specify input folder and output folder", font=title_font, bg="white", fg="#222").pack(pady=(16, 8))
+
     input_var = tk.StringVar()
     output_var = tk.StringVar()
     frame = tk.Frame(root, bg="white")
     frame.pack(pady=16)
+
     tk.Label(frame, text="Input Folder:", font=label_font, bg="white", fg="#222").grid(row=0, column=0, sticky="e", padx=6, pady=8)
     tk.Entry(frame, textvariable=input_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=0, column=1, padx=6, pady=8)
     tk.Button(frame, text="Browse", command=lambda: input_var.set(filedialog.askdirectory(title="Select Input Folder")), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=0, column=2, padx=6, pady=8)
+
     tk.Label(frame, text="Output Folder:", font=label_font, bg="white", fg="#222").grid(row=1, column=0, sticky="e", padx=6, pady=8)
     tk.Entry(frame, textvariable=output_var, width=44, font=entry_font, bg="#f8f8f8", fg="#222").grid(row=1, column=1, padx=6, pady=8)
     tk.Button(frame, text="Browse", command=lambda: output_var.set(filedialog.askdirectory(title="Select Output Folder")), font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").grid(row=1, column=2, padx=6, pady=8)
+
     # Output section (hidden until Convert is clicked)
     output_frame = tk.Frame(root, bg="white")
     text_box = tk.Text(output_frame, wrap=tk.NONE, height=14, state=tk.DISABLED, font=text_font, bg="white", fg="#222", insertbackground="#222")
@@ -459,7 +493,7 @@ def run_gui():
         threading.Thread(target=run_batch_conversion_thread, args=(input_folder, output_folder), daemon=True).start()
 
     # Convert button clicked
-    tk.Button(root, text="Batch Convert", command=run_batch_conversion, font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").pack(pady=24)
+    tk.Button(root, text="Convert", command=run_batch_conversion, font=button_font, bg="white", fg="#222", activebackground="#f5f5f5", activeforeground="#111", bd=0, highlightthickness=0, highlightbackground="white").pack(pady=24)
     root.mainloop()
 
 ######################
