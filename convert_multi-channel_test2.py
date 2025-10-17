@@ -5,16 +5,15 @@ from ome_types import from_xml, to_xml
 from ome_types.model import (
     OME, Image, Pixels, Channel, TiffData
 )
-# from ome_types.model.simple_types import UUID
 
-# Your two OME-TIFFs, each representing one channel of the same scene
+# Inputs
 files = [
     Path("./input/shukrans_omes/raw_abs_loc_1.ome.tiff"),
     Path("./input/shukrans_omes/raw_ph_loc_1.ome.tiff")
 ]
-
 filenames = [f.name for f in files]
 
+# Output directory for companion XML
 companion_dir = Path("./output/multitest")
 
 
@@ -28,8 +27,6 @@ def read_geom(path):
         px = img.pixels
         # try to reuse source UUID if present
         src_uuid = None
-        # if px.tiff_data and px.tiff_data[0].uuid and px.tiff_data[0].uuid.value:
-            # src_uuid = px.tiff_data[0].uuid.value
         if not src_uuid:
             src_uuid = f"urn:uuid:{uuid4()}"
         return dict(
@@ -84,22 +81,6 @@ channels = [
     Channel(id="Channel:1", name=files[1].name, samples_per_pixel=1),
 ]
 
-# We point each channel’s planes to its source file via TiffData.
-# Use each file's UUID if available; otherwise create a UUID element without a value (still valid),
-# but it’s better to reuse the file’s existing UUID when present.
-# def extract_uuid_and_plane_count(ome_image, fallback_name):
-#     # Try to find a UUID already present in TiffData; otherwise, only set file_name
-#     # td_list = ome_image.pixels.tiff_data or []
-#     td_list = []
-#     uuid_val = fallback_name
-#     if td_list and td_list[0].uuid and td_list[0].uuid.value:
-#         uuid_val = td_list[0].uuid.value
-#     # plane_count should cover all Z*T planes for a single-channel file
-#     plane_count = ome_image.pixels.size_z * ome_image.pixels.size_t
-#     # return "blargen", plane_count
-#     # return UUID(value=uuid_val, file_name=fallback_name), plane_count
-#     return {"value": uuid_val, "file_name": fallback_name}, plane_count
-
 def extract_uuid_and_plane_count(ome_img, fallback_name):
     # td = ome_img.pixels.tiff_data or []
     td = []
@@ -118,13 +99,6 @@ print(f"File 0: {files[0]} UUID={uuid0} planes={planes0}")
 print(f"File 1: {files[1]} UUID={uuid1} planes={planes1}")
 
 
-# Each TiffData maps a contiguous block of planes starting at FirstZ/FirstT/FirstC.
-# We assign channel 0 and channel 1 respectively, spanning all Z*T planes.
-# tiffdata = [
-#     TiffData(uuid=uuid0, first_c=0, first_z=0, first_t=0, plane_count=planes0),
-#     TiffData(uuid=uuid1, first_c=1, first_z=0, first_t=0, plane_count=planes1),
-# ]
-
 tiffdata = []
 for c, (file_path, g) in enumerate([(filenames[0], g0), (filenames[1], g1)]):
     print('~~~')
@@ -140,7 +114,6 @@ for c, (file_path, g) in enumerate([(filenames[0], g0), (filenames[1], g1)]):
                 ifd=t  # most OME-TIFF writers store T along IFDs
             )
         )
-
 
 pixels = Pixels(
     id="Pixels:0",
